@@ -1,5 +1,4 @@
 "use client"
-import { ModeToggle } from '@/components/ui/themeToggle'
 import Link from 'next/link'
 import React, { useState } from 'react'
 
@@ -12,10 +11,7 @@ export default function Navbar() {
         <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
           <Link href="/" className="text-[#18A34B] text-2xl">القرآن الكريم</Link>
           <div className="flex md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse">
-            <a className='text-3xl cursor-pointer'>
-
-              <ModeToggle />
-            </a>
+       
             <button
               onClick={() => setIsOpen(!isOpen)}
               type="button"

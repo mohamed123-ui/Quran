@@ -48,9 +48,11 @@ export const fetchSurahsByRevelationOrder = createAsyncThunk<
         .sort((a, b) => a.revelationOrder - b.revelationOrder);
 
       return combinedAndSortedSurahs;
-    } catch (error: any) {
-      console.error("Error fetching surah data for revelation order:", error);
-      return rejectWithValue(error.message || "Failed to fetch surah data by revelation order.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        return rejectWithValue(err.message);
+      }
+      return rejectWithValue("An unknown error occurred while fetching Juzs.");
     }
   }
 );

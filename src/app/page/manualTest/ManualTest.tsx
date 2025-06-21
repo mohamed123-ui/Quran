@@ -10,62 +10,66 @@ import {
   resetTest,
 } from "@/app/Redux/hiddenSlice";
 import { Attempt, getAttempts, saveAttempt } from "@/app/utils/localStorage";
+
+type SurahMeta = { number: number; name: string };
+
 export default function ManualTest() {
-    const [score, setScore] = useState<null | { correct: number; total: number }>(null);
+  const [score, setScore] = useState<null | { correct: number; total: number }>(null);
   const { originalAyah, hiddenIndices, userAnswers, correctAnswers } =
     useSelector((state: RootState) => state.manualTest);
-  const [surahs, setSurahs] = useState<{ number: number; name: string }[]>([]);
+  const [surahs, setSurahs] = useState<SurahMeta[]>([]);
   const [surahNumber, setSurahNumber] = useState<number>(1);
   const [ayahNumber, setAyahNumber] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const dispatch = useDispatch<AppDispatch>();
   const [attemptsHistory, setAttemptsHistory] = useState<Attempt[]>([]);
 
-useEffect(() => {
-  setAttemptsHistory(getAttempts());
-}, []);
+  useEffect(() => {
+    const attempts = getAttempts();
+    setAttemptsHistory(attempts.length > 10 ? attempts.slice(-10) : attempts);
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("https://api.alquran.cloud/v1/surah");
         const json = await res.json();
-        setSurahs(
-          json.data.map((s: any) => ({ number: s.number, name: s.name }))
-        );
+        setSurahs(json.data.map((s: SurahMeta) => ({ number: s.number, name: s.name })));
       } catch (e) {
         console.error("خطأ في جلب السور", e);
       }
     })();
   }, []);
-const removeTashkeel = (text: string) => {
-  return text.replace(/[\u0610-\u061A\u064B-\u065F\u06D6-\u06ED]/g, "");
-};
 
-const fetchAyah = async () => {
-  setLoading(true);
-  try {
-    const res = await fetch(
-      `https://api.alquran.cloud/v1/ayah/${surahNumber}:${ayahNumber}/ar`
-    );
-    const data = await res.json();
+  const removeTashkeel = (text: string) => {
+    return text.replace(/[\u0610-\u061A\u064B-\u065F\u06D6-\u06ED]/g, "");
+  };
 
-    dispatch(resetTest());
-    const cleanedText = removeTashkeel(data.data.text);
-    dispatch(setAyah(cleanedText));
+  const fetchAyah = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `https://api.alquran.cloud/v1/ayah/${surahNumber}:${ayahNumber}/ar`
+      );
+      const data = await res.json();
 
-    const words = cleanedText.split(" ");
-    const hiddenCount = Math.min(2, words.length > 2 ? 2 : 1);
-    const randomIndices: number[] = [];
-    while (randomIndices.length < hiddenCount) {
-      const rand = Math.floor(Math.random() * words.length);
-      if (!randomIndices.includes(rand)) randomIndices.push(rand);
+      dispatch(resetTest());
+      const cleanedText = removeTashkeel(data.data.text);
+      dispatch(setAyah(cleanedText));
+
+      const words = cleanedText.split(" ");
+      const hiddenCount = words.length > 2 ? 2 : 1;
+      const randomIndices: number[] = [];
+      while (randomIndices.length < hiddenCount) {
+        const rand = Math.floor(Math.random() * words.length);
+        if (!randomIndices.includes(rand)) randomIndices.push(rand);
+      }
+      dispatch(setHiddenIndices(randomIndices));
+    } catch (e) {
+      console.error("خطأ في جلب الآية", e);
     }
-    dispatch(setHiddenIndices(randomIndices));
-  } catch (e) {
-    console.error("خطأ في جلب الآية", e);
-  }
-  setLoading(false);
-};
+    setLoading(false);
+  };
 
   const handleChange = (index: number, value: string) => {
     dispatch(setUserAnswer({ index, answer: value.trim() }));
@@ -107,7 +111,7 @@ const fetchAyah = async () => {
         >
           {surahs.map((s) => (
             <option key={s.number} value={s.number}>
-              {`سورة ${s.name} (${s.number})`}
+              {`سورة ${s.name} (${s.number.toLocaleString("ar-EG")})`}
             </option>
           ))}
         </select>
@@ -123,7 +127,7 @@ const fetchAyah = async () => {
           onClick={fetchAyah}
           className="px-4 py-2 bg-blue-600 text-white rounded"
         >
-          {loading ? "جاري..." : "جلب الآية"}
+          {loading ? "⌛ جاري..." : "جلب الآية"}
         </button>
       </div>
 
@@ -132,74 +136,79 @@ const fetchAyah = async () => {
           <div className="bg-gray-100 p-4 rounded text-right leading-loose flex flex-wrap">
             {renderAyah()}
           </div>
-      <button
-  onClick={() => {
-    dispatch(checkAnswers());
-    const correctCount = Object.values(correctAnswers).filter(Boolean).length;
-    const wrongCount = Object.values(correctAnswers).filter(val => val === false).length;
-    const originalSurahName = surahs.find(s => s.number === surahNumber)?.name || "غير معروف";
-    saveAttempt({
-      surah: originalSurahName, // خزّن الاسم عند جلب السورة
-      surahNumber,
-      ayahNumber,
-      correctCount,
-      wrongCount,
-      date: new Date().toISOString(),
-    });
-    const total = hiddenIndices.length;
-    let correct = 0;
 
-    hiddenIndices.forEach((index) => {
-      if (correctAnswers[index]) correct++;
-    });
-    setScore({ correct, total });
-  }}
-  className="mt-4 px-4 py-2 bg-green-600 text-white rounded"
->
-   تحقق من الإجابات
-</button>
-{score && (
-  <div className="mt-4 text-lg font-semibold text-center">
-     إجابات صحيحة: {score.correct} من {score.total} (
-    {Math.round((score.correct / score.total) * 100)}%)
-  </div>
-)}
+          <button
+            onClick={() => {
+              dispatch(checkAnswers());
+              const correct = Object.values(correctAnswers).filter(Boolean).length;
+              const total = hiddenIndices.length;
+
+              const originalSurahName =
+                surahs.find((s) => s.number === surahNumber)?.name || "غير معروف";
+
+              saveAttempt({
+                surah: originalSurahName,
+                surahNumber,
+                ayahNumber,
+                correctCount: correct,
+                wrongCount: total - correct,
+                date: new Date().toISOString(),
+              });
+
+              setScore({ correct, total });
+            }}
+            className="mt-4 px-4 py-2 bg-green-600 text-white rounded"
+          >
+            تحقق من الإجابات
+          </button>
+
+          {score && (
+            <div className="mt-4 text-lg font-semibold text-center">
+              ✅ إجابات صحيحة: {score.correct} من {score.total} (
+              {Math.round((score.correct / score.total) * 100)}%)
+            </div>
+          )}
+
           <button
             onClick={() => dispatch(resetTest())}
             className="mt-2 px-4 py-2 bg-yellow-500 text-white rounded"
           >
-             إعادة المحاولة
+            إعادة المحاولة
           </button>
-          {attemptsHistory.length >= 0 && (
-  <div className="mt-6 bg-white p-4 rounded shadow">
-    <h2 className="text-xl font-semibold mb-2"> المحاولات السابقة</h2>
-    <ul className="space-y-2 max-h-60 overflow-auto">
-      {attemptsHistory.map((att, idx) => (
-        <li key={idx} className="border-b pb-2">
-          <strong>سورة:</strong> {att.surah} ({att.surahNumber}) — آية {att.ayahNumber}<br />
-          <strong>✅ صحيح:</strong> {att.correctCount} | ❌ خطأ: {att.wrongCount}<br />
-          <span className="text-gray-600 text-sm">{new Date(att.date).toLocaleString("ar-EG")}</span>
-        </li>
-      ))}
-    </ul>
-    
-<div>
-  <button  
-  onClick={()=>{
-    localStorage.removeItem("attempts");
-    setAttemptsHistory([]);
-  }}
-  className="text-red-500 hover:text-red-700 mt-4 px-4 py-2 rounded border border-red-500 hover:bg-red-100
-  
-  ">حذف</button>
-</div>
-  </div>
-)}
 
+          {attemptsHistory.length > 0 && (
+            <div className="mt-6 bg-white p-4 rounded shadow">
+              <h2 className="text-xl font-semibold mb-2">📜 المحاولات السابقة</h2>
+              <ul className="space-y-2 max-h-60 overflow-auto">
+                {attemptsHistory.map((att, idx) => (
+                  <li key={idx} className="border-b pb-2">
+                    <strong>سورة:</strong> {att.surah} ({att.surahNumber}) — آية{" "}
+                    {att.ayahNumber}
+                    <br />
+                    <strong>✅ صحيح:</strong> {att.correctCount} | ❌ خطأ:{" "}
+                    {att.wrongCount}
+                    <br />
+                    <span className="text-gray-600 text-sm">
+                      {new Date(att.date).toLocaleString("ar-EG")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <div>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem("attempts");
+                    setAttemptsHistory([]);
+                  }}
+                  className="text-red-500 hover:text-red-700 mt-4 px-4 py-2 rounded border border-red-500 hover:bg-red-100"
+                >
+                  🗑️ حذف المحاولات
+                </button>
+              </div>
+            </div>
+          )}
         </>
-
-
-        
       )}
     </div>
   );

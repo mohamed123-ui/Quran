@@ -1,5 +1,10 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
+interface SurahAudioPayload {
+  fullAudio: string;
+  identifier: string;
+  name: string;
+}
 
 interface Ayahs {
   number: number;
@@ -82,8 +87,11 @@ export const surahAudio = createAsyncThunk(
               identifier === "ar.abdulbasit" ? "عبد الباسط عبد الصمد" :
               identifier === "ar.hudhaify" ? "علي الحذيفي" : "قارئ غير معروف",
       };
-    } catch (error: any) {
-      return rejectWithValue(error.message || "فشل في جلب صوت السورة.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        return rejectWithValue(err.message);
+      }
+      return rejectWithValue("An unknown error occurred while fetching Juzs.");
     }
   }
 );
@@ -117,7 +125,7 @@ const detailsSlice = createSlice({
         state.audioPayloading = null;
         state.loading = "pending";
       })
-  .addCase(surahAudio.fulfilled, (state, action: PayloadAction<any>) => {
+  .addCase(surahAudio.fulfilled, (state, action: PayloadAction<SurahAudioPayload>) => {
   if (state.currentSurah) {
     state.currentSurah.fullAudio = action.payload.fullAudio;
   }

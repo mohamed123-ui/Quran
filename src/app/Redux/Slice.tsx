@@ -29,23 +29,26 @@ export const getSurah = createAsyncThunk<
     const data: SurahApiResponse = await response.json();
     console.log("Fetched data:", data); 
     return data; 
-  } catch (error: any) { 
-    console.error("Error fetching surah data:", error);
-    return rejectWithValue(error.message || "Failed to fetch surah data due to network error or other issue.");
-  }
+  } catch (err: unknown) {
+      if (err instanceof Error) {
+        return rejectWithValue(err.message);
+      }
+      return rejectWithValue("An unknown error occurred while fetching Juzs.");
+    }
 });
 
 interface TabState {
   tabActive: string;
   surahs: Surah[]; 
   loading: 'idle' | 'pending' | 'succeeded' | 'failed'; 
+  error:null
 }
 
 const initialState: TabState = {
   tabActive: "سوره",
   surahs: [],
   loading: 'idle',
-  error: null,
+  error:null
 };
 
 const tabSlice = createSlice({
@@ -60,7 +63,6 @@ const tabSlice = createSlice({
     builder
       .addCase(getSurah.pending, (state) => {
         state.loading = 'pending';
-        state.error = null; 
         console.log("Fetching Surah data...");
       })
       .addCase(getSurah.fulfilled, (state, action: PayloadAction<SurahApiResponse>) => {
@@ -70,7 +72,6 @@ const tabSlice = createSlice({
       })
       .addCase(getSurah.rejected, (state, action: PayloadAction<string | undefined>) => { 
         state.loading = 'failed';
-        state.error = action.payload || "Failed to fetch Surah data."; 
         console.error("Failed to fetch Surah data:", action.payload);
       });
   }

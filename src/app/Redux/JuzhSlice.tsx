@@ -43,24 +43,25 @@ export const getAllJuzs = createAsyncThunk(
     try {
       const allJuzsData: JuzData[] = [];
       for (let i = 1; i <= 30; i++) {
-        const response = await fetch(`http://api.alquran.cloud/v1/juz/${i}/${edition}`);
+        const response = await fetch(`https://api.alquran.cloud/v1/juz/${i}/${edition}`);
         if (!response.ok) {
           throw new Error(`Failed to fetch Juz ${i}: ${response.statusText}`);
         }
         const result = await response.json();
         if (result.data) {
-          allJuzsData.push(result.data as JuzData); 
-        } else {
-          console.warn(`No data found for Juz ${i}`);
+          allJuzsData.push(result.data as JuzData);
         }
       }
       return allJuzsData;
-    } catch (err: any) {
-      console.error("Error fetching all Juzs:", err);
-      return rejectWithValue(err.message || "An unknown error occurred while fetching Juzs.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        return rejectWithValue(err.message);
+      }
+      return rejectWithValue("An unknown error occurred while fetching Juzs.");
     }
   }
 );
+
 
 
 interface JuzsState {
