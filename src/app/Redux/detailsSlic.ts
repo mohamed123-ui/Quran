@@ -65,7 +65,7 @@ export const surahDetails = createAsyncThunk(
   async (surahNumber: number, { rejectWithValue }) => {
     try {
       const response = await fetch(
-        `http://api.alquran.cloud/v1/surah/${surahNumber}`
+        `https://api.alquran.cloud/v1/surah/${surahNumber}`
       );
       const data = await response.json();
       return data.data;
